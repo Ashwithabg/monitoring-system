@@ -1,11 +1,18 @@
 package main
 
 import (
+	"bytes"
+	"encoding/gob"
 	"flag"
 	"log"
 	"math/rand"
 	"strconv"
 	"time"
+
+	"github.com/streadway/amqp"
+
+	"distributed-example/src/distributed/dataTransferObject"
+	"distributed-example/src/distributed/utils"
 )
 
 var URL = "amqp://guest:guest@localhost:5672"
@@ -19,17 +26,45 @@ var value = randomNumber.Float64()*(*maximumValue-*minimumValue) + *minimumValue
 var nominalValueOfSensor = (*maximumValue-*minimumValue)/2 + *minimumValue
 
 func main() {
-	numberOfmsPerCycle := strconv.Itoa(1000 / int(*freq)) // 5 cycles/sec => 200 ms/cycle
-	dur, _ := time.ParseDuration(numberOfmsPerCycle + "ms")
-	signal := time.Tick(dur)
+	flag.Parse() //parse command line flags
 
-	for range signal {
-		calcValue()
+	connection, channel := utils.GetChannel(URL)
+	defer connection.Close()
+	defer channel.Close()
+
+	dataQueue := utils.GetQueue(*name, channel)
+	signals := getSignals()
+	buffer := new(bytes.Buffer)
+	encoder := gob.NewEncoder(buffer)
+
+	for range signals {
+		calculateValues()
+		reading := dataTransferObject.SensorMessage{
+			Name:      *name,
+			Value:     value,
+			Timestamp: time.Now(),
+		}
+
+		buffer.Reset()
+		encoder.Encode(reading)
+
+		msg := amqp.Publishing{
+			Body: buffer.Bytes(),
+		}
+
+		channel.Publish("", dataQueue.Name, false, false, msg)
 		log.Printf("Reading sent. value: %v", value)
 	}
 }
 
-func calcValue() {
+func getSignals() <-chan time.Time {
+	numberOfmsPerCycle := strconv.Itoa(1000 / int(*freq)) // 5 cycles/sec => 200 ms/cycle
+	duration, _ := time.ParseDuration(numberOfmsPerCycle + "ms")
+	signal := time.Tick(duration)
+	return signal
+}
+
+func calculateValues() {
 	var maxStep, minStep float64
 
 	if value < nominalValueOfSensor {
