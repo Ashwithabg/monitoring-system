@@ -1,0 +1,14 @@
+{
+  "name": "distributed_example",
+  "version": "1.0.0",
+  "description": "Demo project for demonstrating how to create a distributed application with Go",
+  "main": "main.go",
+  "scripts": {},
+  "keywords": [],
+  "author": "Ashwitha",
+  "license": "MIT",
+  "devDependencies": {
+    "gulp": "^3.9.0",
+    "gulp-shell": "^0.7.0"
+  }
+}
