@@ -51,18 +51,18 @@ func main() {
 
 	signals := getSignals()
 	buffer := new(bytes.Buffer)
-	encoder := gob.NewEncoder(buffer)
 
 	for range signals {
 		buffer.Reset()
-		publishMessage(encoder, buffer, channel, dataQueue)
+		publishMessage(buffer, channel, dataQueue)
 	}
 }
 
-func publishMessage(encoder *gob.Encoder, buffer *bytes.Buffer, channel *amqp.Channel, dataQueue *amqp.Queue) {
+func publishMessage(buffer *bytes.Buffer, channel *amqp.Channel, dataQueue *amqp.Queue) {
 	calculateValues()
 
 	reading := dataTransferObject.SensorMessage{Name: *name, Value: value, Timestamp: time.Now(),}
+	encoder := gob.NewEncoder(buffer)
 	encoder.Encode(reading)
 	msg := amqp.Publishing{Body: buffer.Bytes()}
 	channel.Publish("", dataQueue.Name, false, false, msg)
