@@ -38,17 +38,18 @@ func main() {
 	defer connection.Close()
 	defer channel.Close()
 
-	//Uses direct route so only one consumer will receive the data.
 	dataQueue := utils.GetQueue(*name, channel)
+	PublishQueueName(channel)
 
-	msg := amqp.Publishing{Body: []byte(*name)}
-	channel.Publish(
-		"amq.fanout",
+	discoveryQueue := utils.GetQueue("", channel)
+	channel.QueueBind(
+		discoveryQueue.Name,
 		"",
+		utils.SensorDiscoveryExchange,
 		false,
-		false,
-		msg)
+		nil, )
 
+	go listenForDiscoveryRequests(discoveryQueue.Name, channel)
 	signals := getSignals()
 	buffer := new(bytes.Buffer)
 
@@ -63,9 +64,14 @@ func publishMessage(buffer *bytes.Buffer, channel *amqp.Channel, dataQueue *amqp
 
 	reading := dataTransferObject.SensorMessage{Name: *name, Value: value, Timestamp: time.Now(),}
 	encoder := gob.NewEncoder(buffer)
-	encoder.Encode(reading)
+	_ = encoder.Encode(reading)
 	msg := amqp.Publishing{Body: buffer.Bytes()}
-	channel.Publish("", dataQueue.Name, false, false, msg)
+	channel.Publish(
+		"",
+		dataQueue.Name,
+		false,
+		false,
+		msg)
 
 	log.Printf("Reading sent. value: %v", value)
 }
@@ -94,4 +100,31 @@ func calculateValues() {
 	}
 
 	value += randomNumber.Float64()*(maxStep-minStep) + minStep
+}
+
+func PublishQueueName(ch *amqp.Channel) {
+	msg := amqp.Publishing{Body: []byte(*name)}
+	ch.Publish(
+		"amq.fanout",
+		"",
+		false,
+		false,
+		msg)
+
+}
+
+func listenForDiscoveryRequests(name string, ch *amqp.Channel) {
+	msgs, _ := ch.Consume(
+		name,
+		"",
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+	for range msgs {
+		PublishQueueName(ch)
+	}
+
 }
