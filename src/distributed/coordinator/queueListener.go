@@ -14,14 +14,16 @@ import (
 const URL = "amqp://guest:guest@localhost:5672"
 
 type QueueListener struct {
-	conn    *amqp.Connection
-	ch      *amqp.Channel
-	sources map[string]<-chan amqp.Delivery
+	conn            *amqp.Connection
+	ch              *amqp.Channel
+	sources         map[string]<-chan amqp.Delivery
+	eventAggregator *EventAggregator
 }
 
 func NewQueueListener() *QueueListener {
 	ql := QueueListener{
-		sources: make(map[string]<-chan amqp.Delivery),
+		sources:         make(map[string]<-chan amqp.Delivery),
+		eventAggregator: NewEventAggregator(),
 	}
 	ql.conn, ql.ch = utils.GetChannel(URL)
 	return &ql
@@ -65,14 +67,22 @@ func (ql *QueueListener) ListenForNewSource() {
 	}
 }
 
-func (ql *QueueListener) AddListener(msgs <-chan amqp.Delivery) {
+func (queueListener *QueueListener) AddListener(msgs <-chan amqp.Delivery) {
 	fmt.Println("here")
 	for msg := range msgs {
 		r := bytes.NewReader(msg.Body)
 		d := gob.NewDecoder(r)
-		sd := new(dataTransferObject.SensorMessage)
-		d.Decode(sd)
+		sensorData := new(dataTransferObject.SensorMessage)
+		d.Decode(sensorData)
 
-		fmt.Printf("Reading mesage: %v \n", sd)
+		fmt.Printf("Reading mesage: %v \n", sensorData)
+
+		eventData := EventData{
+			Name:      sensorData.Name,
+			Timestamp: sensorData.Timestamp,
+			Value:     sensorData.Value,
+		}
+		queueListener.eventAggregator.PublishEvent("MessageReceived"+msg.RoutingKey, eventData, )
+
 	}
 }
