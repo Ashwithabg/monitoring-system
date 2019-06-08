@@ -41,10 +41,13 @@ func main() {
 	//Uses direct route so only one consumer will receive the data.
 	dataQueue := utils.GetQueue(*name, channel)
 
-	//Pubish creation of new queue to keep track of data routes(sensors)
-	sensorQueue := utils.GetQueue(utils.SensorListQueue, channel)
 	msg := amqp.Publishing{Body: []byte(*name)}
-	channel.Publish("", sensorQueue.Name, false, false, msg)
+	channel.Publish(
+		"amq.fanout",
+		"",
+		false,
+		false,
+		msg)
 
 	signals := getSignals()
 	buffer := new(bytes.Buffer)
