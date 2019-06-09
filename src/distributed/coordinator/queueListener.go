@@ -70,7 +70,6 @@ func (ql *QueueListener) ListenForNewSource() {
 }
 
 func (queueListener *QueueListener) AddListener(msgs <-chan amqp.Delivery) {
-	fmt.Println("here")
 	for msg := range msgs {
 		r := bytes.NewReader(msg.Body)
 		d := gob.NewDecoder(r)
