@@ -1,5 +1,5 @@
 {
-  "name": "distributed_example",
+  "name": "monitoring-system",
   "version": "1.0.0",
   "description": "Demo project for demonstrating how to create a distributed application with Go",
   "main": "main.go",
@@ -8,7 +8,9 @@
   "author": "Ashwitha",
   "license": "MIT",
   "devDependencies": {
-    "gulp": "^3.9.0",
-    "gulp-shell": "^0.7.0"
+    "gulp": "^4.0.2",
+    "gulp-shell": "^0.7.0",
+    "lodash": ">=4.17.11",
+    "minimatch": ">=3.0.2"
   }
 }
